@@ -1,6 +1,6 @@
-import Dropbox.Util
-
 defmodule Dropbox.HTTP do
+  import Dropbox.Util
+  
   def start do
     :hackney.start
   end

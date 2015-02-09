@@ -3,65 +3,8 @@ defmodule Dropbox do
   Provides an interface to the Dropbox Core API.
   """
 
-  defmodule Error do
-    defexception [:message, :status]
-  end
-
-  defmodule Client do
-    defstruct client_id: nil,
-              client_secret: nil,
-              access_token: nil,
-              locale: nil,
-              root: :dropbox
-  end
-
-  defmodule Account.Team do
-    defstruct name: nil
-  end
-
-  defmodule Account.Quota do
-    defstruct normal: 0,
-              shared: 0,
-              quota: 0
-  end
-
-  defmodule Account do
-    defstruct email: nil,
-              referral_link: nil,
-              display_name: nil,
-              uid: nil,
-              country: nil,
-              team: %Dropbox.Account.Team{},
-              quota_info: %Dropbox.Account.Quota{}
-  end
-
-  defmodule Metadata.Photo do
-    defstruct lat_long: [],
-              time_taken: nil
-  end
-
-  defmodule Metadata.Video do
-    defstruct lat_long: [],
-              time_taken: nil,
-              duration: 0
-  end
-
-  defmodule Metadata do
-    defstruct size: nil,
-              bytes: 0,
-              path: nil,
-              is_dir: false,
-              is_deleted: false,
-              rev: nil,
-              hash: nil,
-              thumb_exists: false,
-              photo_info: %Dropbox.Metadata.Photo{},
-              video_info: %Dropbox.Metadata.Video{},
-              icon: nil,
-              modified: nil,
-              client_mtime: nil,
-              contents: %{}
-  end
+  @base_url "https://api.dropbox.com/1"
+  @base_content_url "https://api-content.dropbox.com/1"
 
   def start do
     Dropbox.HTTP.start
@@ -88,14 +31,14 @@ defmodule Dropbox do
   end
 
   def access_token(client, code) do
-    case Dropbox.HTTP.post client, "https://api.dropbox.com/1/oauth2/token?grant_type=authorization_code&code=#{URI.encode code}", nil, %{access_token: nil, uid: nil} do
+    case Dropbox.HTTP.post client, "#{@base_url}/oauth2/token?grant_type=authorization_code&code=#{URI.encode code}", nil, %{access_token: nil, uid: nil} do
       {:ok, token} -> {:ok, token.access_token, token.uid}
       e -> e
     end
   end
 
   def disable_access_token(client) do
-    case Dropbox.HTTP.post client, "https://api.dropbox.com/1/disable_access_token" do
+    case Dropbox.HTTP.post client, "#{@base_url}/disable_access_token" do
       {:ok, _} -> :ok
       e -> e
     end
@@ -104,7 +47,7 @@ defmodule Dropbox do
   ### Dropbox accounts ###
 
   def account_info(client) do
-    Dropbox.HTTP.get client, "https://api.dropbox.com/1/account/info", Dropbox.Account
+    Dropbox.HTTP.get client, "#{@base_url}/account/info", Dropbox.Account
   end
 
   def account_info!(client) do
@@ -117,7 +60,7 @@ defmodule Dropbox do
   ### Files and metadata ###
 
   def download(client, path, rev \\ nil) do
-    Dropbox.HTTP.get client, "https://api-content.dropbox.com/1/files/#{client.root}#{normalize_path path}#{if rev do "?rev=" <> rev end}", Dropbox.Metadata
+    Dropbox.HTTP.get client, "#{@base_content_url}/files/#{client.root}#{normalize_path path}#{if rev do "?rev=" <> rev end}", Dropbox.Metadata
   end
 
   def download!(client, path, rev \\ nil) do
@@ -170,7 +113,7 @@ defmodule Dropbox do
     parent = self
     pid = spawn fn -> wait_response parent, %{file: local_path, meta: nil, error: nil} end
 
-    case Dropbox.HTTP.get client, "https://api-content.dropbox.com/1/files/#{client.root}#{normalize_path path}#{if rev do "?rev=" <> rev end}", Dropbox.Metadata, pid do
+    case Dropbox.HTTP.get client, "#{@base_content_url}/files/#{client.root}#{normalize_path path}#{if rev do "?rev=" <> rev end}", Dropbox.Metadata, pid do
       {:ok, _ref} ->
         receive do
           {_ref, :done, meta} ->
@@ -205,7 +148,7 @@ defmodule Dropbox do
       query = Map.put query, :parent_rev, parent_rev
     end
 
-    Dropbox.HTTP.put client, "https://api-content.dropbox.com/1/files_put/#{client.root}#{normalize_path remote_path}", {:file, local_path}, Dropbox.Metadata
+    Dropbox.HTTP.put client, "#{@base_content_url}/files_put/#{client.root}#{normalize_path remote_path}", {:file, local_path}, Dropbox.Metadata
   end
 
   def upload_file!(client, local_path, remote_path, overwrite \\ true, parent_rev \\ nil) do
@@ -216,7 +159,7 @@ defmodule Dropbox do
   end
 
   def metadata(client, path, options \\ []) do
-    case Dropbox.HTTP.get client, "https://api.dropbox.com/1/metadata/#{client.root}#{normalize_path path}", Dropbox.Metadata do
+    case Dropbox.HTTP.get client, "#{@base_url}/metadata/#{client.root}#{normalize_path path}", Dropbox.Metadata do
       {:ok, meta} ->
         {:ok, Map.put(meta, :contents, Enum.map(meta.contents, fn(x) -> Dropbox.Util.atomize_map Dropbox.Metadata, x end))}
       e -> e
@@ -237,7 +180,7 @@ defmodule Dropbox do
   end
 
   def revisions(client, path, limit \\ 10) do
-    Dropbox.HTTP.get client, "https://api.dropbox.com/1/revisions/#{client.root}#{normalize_path path}?rev_limit=#{limit}", Dropbox.Metadata
+    Dropbox.HTTP.get client, "#{@base_url}/revisions/#{client.root}#{normalize_path path}?rev_limit=#{limit}", Dropbox.Metadata
   end
 
   def revisions!(client, path, limit \\ 10) do
@@ -257,7 +200,7 @@ defmodule Dropbox do
       include_deleted: deleted
     }
 
-    Dropbox.HTTP.get client, "https://api.dropbox.com/1/search/#{client.root}#{normalize_path path}?#{URI.encode_query query}", Dropbox.Metadata
+    Dropbox.HTTP.get client, "#{@base_url}/search/#{client.root}#{normalize_path path}?#{URI.encode_query query}", Dropbox.Metadata
   end
 
   def search!(client, path, query, limit \\ 1000, deleted \\ false) do
@@ -268,7 +211,7 @@ defmodule Dropbox do
   end
 
   def share_url(client, path, short \\ true) do
-    case Dropbox.HTTP.post client, "https://api.dropbox.com/1/shares/#{client.root}#{normalize_path path}?short_url=#{short}", nil, %{url: nil, expires: nil} do
+    case Dropbox.HTTP.post client, "#{@base_url}/shares/#{client.root}#{normalize_path path}?short_url=#{short}", nil, %{url: nil, expires: nil} do
       {:ok, %{url: url, expires: expires}} -> {:ok, url, expires}
       e -> e
     end
@@ -282,7 +225,7 @@ defmodule Dropbox do
   end
 
   def media_url(client, path) do
-    case Dropbox.HTTP.post client, "https://api.dropbox.com/1/media/#{client.root}#{normalize_path path}", nil, %{url: nil, expires: nil} do
+    case Dropbox.HTTP.post client, "#{@base_url}/media/#{client.root}#{normalize_path path}", nil, %{url: nil, expires: nil} do
       {:ok, %{url: url, expires: expires}} -> {:ok, url, expires}
       e -> e
     end
@@ -296,7 +239,7 @@ defmodule Dropbox do
   end
 
   def copy_ref(client, path) do
-    case Dropbox.HTTP.get client, "https://api.dropbox.com/1/copy_ref/#{client.root}#{normalize_path path}", %{copy_ref: nil, expires: nil} do
+    case Dropbox.HTTP.get client, "#{@base_url}/copy_ref/#{client.root}#{normalize_path path}", %{copy_ref: nil, expires: nil} do
       {:ok, %{copy_ref: copy_ref, expires: expires}} -> {:ok, copy_ref, expires}
       e -> e
     end
@@ -310,7 +253,7 @@ defmodule Dropbox do
   end
 
   def thumbnail(client, path, size \\ :s, format \\ :jpeg) do
-    Dropbox.HTTP.get client, "https://api-content.dropbox.com/1/thumbnails/#{client.root}#{normalize_path path}?format=#{format}&size=#{size}"
+    Dropbox.HTTP.get client, "#{@base_content_url}/thumbnails/#{client.root}#{normalize_path path}?format=#{format}&size=#{size}"
   end
 
   def thumbnail!(client, path, size \\ :s, format \\ :jpeg) do
@@ -335,7 +278,7 @@ defmodule Dropbox do
       to_path: to_path
     }
 
-    Dropbox.HTTP.post client, "https://api.dropbox.com/1/fileops/copy?#{URI.encode_query query}"
+    Dropbox.HTTP.post client, "#{@base_url}/fileops/copy?#{URI.encode_query query}"
   end
 
   def copy!(client, from_path, to_path) do
@@ -352,7 +295,7 @@ defmodule Dropbox do
       to_path: to_path
     }
 
-    Dropbox.HTTP.post client, "https://api.dropbox.com/1/fileops/copy?#{URI.encode_query query}", Dropbox.Metadata
+    Dropbox.HTTP.post client, "#{@base_url}/fileops/copy?#{URI.encode_query query}", Dropbox.Metadata
   end
 
   def copy_from_ref!(client, from_copy_ref, to_path) do
@@ -368,7 +311,7 @@ defmodule Dropbox do
       path: path
     }
 
-    case Dropbox.HTTP.post client, "https://api.dropbox.com/1/fileops/create_folder?#{URI.encode_query query}", Dropbox.Metadata do
+    case Dropbox.HTTP.post client, "#{@base_url}/fileops/create_folder?#{URI.encode_query query}", Dropbox.Metadata do
       {:ok, _meta} -> true
       _ -> false
     end
@@ -380,7 +323,7 @@ defmodule Dropbox do
       path: path
     }
 
-    Dropbox.HTTP.post client, "https://api.dropbox.com/1/fileops/delete?#{URI.encode_query query}"
+    Dropbox.HTTP.post client, "#{@base_url}/fileops/delete?#{URI.encode_query query}"
   end
 
   def delete!(client, path) do
@@ -397,7 +340,7 @@ defmodule Dropbox do
       to_path: to_path
     }
 
-    Dropbox.HTTP.post client, "https://api.dropbox.com/1/fileops/move?#{URI.encode_query query}"
+    Dropbox.HTTP.post client, "#{@base_url}/fileops/move?#{URI.encode_query query}"
   end
 
   def move!(client, from_path, to_path) do
