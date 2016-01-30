@@ -16,7 +16,7 @@ defmodule Dropbox do
   end
 
   ### OAuth 2.0: optional, can be handled by third-party lib or manually ###
-
+  # -- MOVED
   def authorize_url(client, redirect_uri \\ nil, state \\ "") do
     query = %{
       client_id: client.client_id,
@@ -30,11 +30,16 @@ defmodule Dropbox do
     "https://www.dropbox.com/1/oauth2/authorize?#{URI.encode_query query}"
   end
 
+  # -- MOVED to Auth model.
   def access_token(client, code) do
-    case Dropbox.HTTP.post client, "#{@base_url}/oauth2/token?grant_type=authorization_code&code=#{URI.encode code}", nil, %{access_token: nil, uid: nil} do
+    case Dropbox.HTTP.post client, oauth2_authcode(code), nil, %{access_token: nil, uid: nil} do
       {:ok, token} -> {:ok, token.access_token, token.uid}
       e -> e
     end
+  end
+
+  defp oauth2_authcode(code) do
+    "#{@base_url}/oauth2/token?grant_type=authorization_code&code=#{URI.encode(code)}"
   end
 
   def disable_access_token(client) do
