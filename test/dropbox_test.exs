@@ -1,33 +1,32 @@
 defmodule DropboxTest do
   use ExUnit.Case
+  import Dropbox.TestHelper, only: [access_key: 0, client: 0, write_file: 1]
 
   setup_all do
     Dropbox.HTTP.start
-
     try do
-      creds_file = Path.expand System.get_env "DB_CREDS"
-
+      creds_file = Path.expand "./.dropbox-access-token"
+      
       if not File.exists? creds_file do
-        IO.write "Dropbox app key: "
-        client_id = String.strip IO.read :line
-        IO.write "Dropbox app secret: "
-        client_secret = String.strip IO.read :line
-
-        client = %Dropbox.Client{client_id: client_id,
-                                 client_secret: client_secret}
-
-        IO.puts "To obtain a code, visit: #{Dropbox.authorize_url(client)}"
+        url = client
+        |> Dropbox.Auth.authorize_url
+        IO.puts "To obtain a code, visit: #{url}"
         IO.write "Enter code: "
         code = String.strip IO.read :line
+       
+        result = Dropbox.Auth.access_token(client, code)
+        |> Dropbox.Auth.fetch_account(client)
 
-        {:ok, access_token, uid} = Dropbox.access_token client, code
-        client = %{client | access_token: access_token}
-        {:ok, _} = Dropbox.account_info client
-
-        File.write! creds_file, "#{client_id}\n#{client_secret}\n#{access_token}"
+        access_token = case result do
+          {:ok, acc, client} -> client.access_token
+          _ -> nil 
+        end
+        write_file(access_token)
+        |> IO.inspect
       end
 
-      {:ok, [client: get_client creds_file]}
+      data = get_client(client, ".dropbox-access-token")
+      {:ok, [client: data]}
     rescue
       e ->
         IO.puts "
@@ -39,6 +38,7 @@ defmodule DropboxTest do
         :bad
     end
   end
+
 
   test "get account info", ctx do
     account = Dropbox.account_info! ctx[:client]
@@ -75,17 +75,12 @@ defmodule DropboxTest do
     assert Dropbox.delete!(ctx[:client], filename) == true
   end
 
-  defp get_client(path) do
+  defp get_client(client, path) do
     file = File.open! path
-    client_id = String.strip IO.read file, :line
-    client_secret = String.strip IO.read file, :line
     access_token = String.strip IO.read file, :line
     File.close file
-
-    %Dropbox.Client{client_id: client_id,
-                    client_secret: client_secret,
-                    access_token: access_token,
-                    root: :dropbox}
+    %{client | access_token: access_token, root: :dropbox }
+                    
   end
 
   defp random_name do
