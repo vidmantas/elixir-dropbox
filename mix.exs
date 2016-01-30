@@ -17,14 +17,15 @@ defmodule Dropbox.Mixfile do
   def application do
     [
       mod: { Dropbox, [] },
-      applications: [:hackney]
+      applications: [:hackney, :httpoison]
     ]
   end
 
   defp deps do
     [
       {:jazz, "~> 0.2.1"},
-      {:hackney, "~> 1.0.0"}
+      {:hackney, "~> 1.4.4"},
+      {:httpoison, "~> 0.8.0"}
     ]
   end
 
