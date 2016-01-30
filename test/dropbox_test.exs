@@ -32,9 +32,9 @@ defmodule DropboxTest do
         IO.puts "
   Error: #{inspect e}
 
-  You need to set the DB_CREDS environment variable for credential storage:
-
-        DB_CREDS=~/.dropbox-test-credentials mix test"
+  You need to set your App Tokens environment variable for credential storage:
+  See test/test_helper.exs file: DropBox.TestHelper.client/0
+  Cannot read in ./.dropbox-access-token"
         :bad
     end
   end
@@ -80,7 +80,6 @@ defmodule DropboxTest do
     access_token = String.strip IO.read file, :line
     File.close file
     %{client | access_token: access_token, root: :dropbox }
-                    
   end
 
   defp random_name do
