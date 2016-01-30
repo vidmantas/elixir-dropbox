@@ -30,3 +30,17 @@ iex> Dropbox.upload_file! client, "/etc/passwd", "secrets/lol"
 ```
 
 Nearly all functions have bang (!) equivalents, which raise exceptions on errors instead of returning `{:error, reason}` tuples.
+
+## Testing
+
+Must test against app with 'Full Access' not Folder Access.
+
+Set Environment variables DROPBOX_APP_ID and DROPBOX_SECRET_KEY
+
+TODO: 
+  - Documentation.
+  - Write more tests / Refactor if needed.
+
+
+
+
