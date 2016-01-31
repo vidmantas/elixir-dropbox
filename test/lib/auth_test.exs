@@ -2,14 +2,6 @@ defmodule Dropbox.AuthTest do
   use ExUnit.Case
   import Dropbox.TestHelper, only: [access_key: 0, client: 0]
   
-  # @access_key  System.get_env("DROPBOX_APP_ID")
-
-  # def client do
-  #   %Dropbox.Client{ 
-  #       client_id: access_key,
-  #       client_secret: System.get_env("DROPBOX_SECRET_KEY") }
-  # end
-
   def read_file(creds_file) do
     if not File.exists? creds_file do
       _client_struct = client

@@ -1,32 +1,13 @@
 defmodule DropboxTest do
   use ExUnit.Case
+  alias  Dropbox.Setup
   import Dropbox.TestHelper, only: [access_key: 0, client: 0, write_file: 1]
 
   setup_all do
     Dropbox.HTTP.start
     try do
-      creds_file = Path.expand "./.dropbox-access-token"
-      
-      if not File.exists? creds_file do
-        url = client
-        |> Dropbox.Auth.authorize_url
-        IO.puts "To obtain a code, visit: #{url}"
-        IO.write "Enter code: "
-        code = String.strip IO.read :line
-       
-        result = Dropbox.Auth.access_token(client, code)
-        |> Dropbox.Auth.fetch_account(client)
-
-        access_token = case result do
-          {:ok, acc, client} -> client.access_token
-          _ -> nil 
-        end
-        write_file(access_token)
-        |> IO.inspect
-      end
-
-      data = get_client(client, ".dropbox-access-token")
-      {:ok, [client: data]}
+      Dropbox.Setup.connect
+      |> IO.inspect
     rescue
       e ->
         IO.puts "
@@ -73,13 +54,6 @@ defmodule DropboxTest do
     assert Dropbox.download_file!(ctx[:client], "/#{filename}", tmp_file) == meta
     File.rm! tmp_file
     assert Dropbox.delete!(ctx[:client], filename) == true
-  end
-
-  defp get_client(client, path) do
-    file = File.open! path
-    access_token = String.strip IO.read file, :line
-    File.close file
-    %{client | access_token: access_token, root: :dropbox }
   end
 
   defp random_name do
