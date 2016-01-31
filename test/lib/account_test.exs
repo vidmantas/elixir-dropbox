@@ -8,7 +8,7 @@ defmodule Dropbox.AccountTest do
   
   test "fetch client without error", %{client: client} do 
     {:ok, account} = 
-    Dropbox.Account.account_info(client)
+    Dropbox.Account.get_info(client)
     |> IO.inspect
 
     assert is_map(account)

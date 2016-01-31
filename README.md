@@ -41,6 +41,9 @@ TODO:
   - Documentation.
   - Write more tests / Refactor if needed.
 
+PLEASE NOTE:
+  I changed the api - If you were previously using the original - repo: *  Review and compare tests
+  If this is all brand new to you: You'll be fine.
 
 
 

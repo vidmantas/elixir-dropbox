@@ -10,12 +10,14 @@ defmodule Dropbox.Account do
 
   @base_url "https://api.dropbox.com/1"
 
-  def account_info(client) do
-    Dropbox.HTTP.get client, "#{@base_url}/account/info", Dropbox.Account
+  #  Formerly account_info
+  def get_info(client) do
+    Dropbox.HTTP.get client, "#{@base_url}/account/info", __MODULE__
   end
 
-  def account_info!(client) do
-    case account_info client do
+  #  Formerly account_info!
+  def get_info!(client) do
+    case get_info client do
       {:ok, info} -> info
       {:error, reason} -> Dropbox.Error.raise_error reason
     end

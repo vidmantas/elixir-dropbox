@@ -3,7 +3,7 @@ defmodule Dropbox.Auth do
   @base_url "https://api.dropbox.com/1"
 
   ### OAuth 2.0: optional, can be handled by third-party lib or manually ###
-  
+
   def authorize_url(client, re_uri \\ nil, state \\ "") do
     _authorize_url(client, re_uri, state)
   end
@@ -46,7 +46,7 @@ defmodule Dropbox.Auth do
 
   def fetch_account({:ok, access_token, uid}, client) do
     client = %{client | access_token: access_token}
-    Dropbox.account_info(client)
+    Dropbox.get_info(client)
     |> account_ok(client)
   end
 

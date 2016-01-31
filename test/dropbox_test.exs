@@ -22,7 +22,7 @@ defmodule DropboxTest do
 
 
   test "get account info", ctx do
-    account = Dropbox.account_info! ctx[:client]
+    account = Dropbox.Account.get_info! ctx[:client]
 
     assert account.email != nil
     assert account.quota_info.quota > 0
