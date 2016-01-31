@@ -18,11 +18,7 @@ defmodule Dropbox.HTTP do
   end
 
   defp do_request(client, method, url, body, res_struct, stream_pid \\ nil) do
-    if client.access_token do
-      headers = [{"Authorization", "Bearer #{client.access_token}"}]
-    else
-      headers = [{"Authorization", "Basic #{Base.encode64 client.client_id <> ":" <> client.client_secret}"}]
-    end
+    headers = fetch_headers( client, client.access_token)
 
     case body do
       {:json, json} ->
@@ -32,19 +28,14 @@ defmodule Dropbox.HTTP do
       _ -> body = []
     end
 
-    options = [{:pool, :default}]
-
-    if stream_pid do
-      options = [:async, {:stream_to, stream_pid} | options]
-    end
+    options = set_options(stream_pid)
 
     case :hackney.request method, url, headers, body, options do
       {:ok, code, headers, body_ref} ->
         {:ok, body} = :hackney.body body_ref
-
         download = false
-
-        case Enum.find headers, fn({k,_}) -> k == "x-dropbox-metadata" end do
+        
+        case Enum.find(headers, fn({k,_}) -> k == "x-dropbox-metadata" end) do
           {_, meta} ->
             download = true
             json = atomize_map Dropbox.Metadata, Jazz.decode!(meta)
@@ -63,8 +54,26 @@ defmodule Dropbox.HTTP do
             {:error, {{:http_status, code}, json["error"]}}
           true ->
             {:error, json}
-        end
+        end # cond
       e -> e
-    end
+    end # case:hackney
   end
+
+  defp opts, do: [{:pool, :default}]
+  
+  defp set_options(nil), do: opts
+  defp set_options(pid) when is_pid(pid) do
+    [:async, {:stream_to, pid} | opts]
+  end
+  
+  # internal - do_request
+  defp fetch_headers(client, token) when is_nil(token) do
+    [{"Authorization", "Basic #{Base.encode64 client.client_id <> ":" <> client.client_secret}"}]
+  end
+  
+  # internal - do_request
+  defp fetch_headers(client, _token) do
+    [{"Authorization", "Bearer #{client.access_token}"}]
+  end
+
 end
