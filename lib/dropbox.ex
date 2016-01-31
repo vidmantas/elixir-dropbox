@@ -3,6 +3,7 @@ defmodule Dropbox do
   Provides an interface to the Dropbox Core API.
   """
   import Dropbox.Error
+  import Dropbox.HTTP, only: [wait_response: 2]
 
   @base_url "https://api.dropbox.com/1"
   @base_content_url "https://api-content.dropbox.com/1"
@@ -17,85 +18,21 @@ defmodule Dropbox do
   end
 
   ### Files and metadata ###
-
+  # For backward compatibility
   def download(client, path, rev \\ nil) do
-    Dropbox.HTTP.get client, "#{@base_content_url}/files/#{client.root}#{normalize_path path}#{if rev do "?rev=" <> rev end}", Dropbox.Metadata
+    Dropbox.File.download(client, path, rev)
   end
-
+  # For backward compatibility
   def download!(client, path, rev \\ nil) do
-    case download client, path, rev do
-      {:ok, _meta, contents} -> contents
-      {:error, reason} -> raise_error reason
-    end
-  end
-
-  defp wait_response(parent, file) do
-    # TODO: move this mess into HTTP
-    receive do
-      {:hackney_response, _ref, {:status, status, _reason}} ->
-        if status in 200..299 do
-          wait_response parent, file
-        else
-          wait_response parent, %{file | file: "", error: status}
-        end
-      {:hackney_response, _ref, {:headers, headers}} ->
-        if file.error do
-          wait_response parent, file
-        else
-          {_, meta} = Enum.find headers, fn({k,_}) -> k == "x-dropbox-metadata" end
-          meta = Dropbox.Util.atomize_map Dropbox.Metadata, Jazz.decode!(meta)
-          {:ok, newfile} = File.open file.file, [:write]
-          wait_response parent, %{file | file: newfile, meta: meta}
-        end
-      {:hackney_response, ref, :done} ->
-        if file.error do
-          reason = Jazz.decode!(file.file, keys: :atoms).error
-          send parent, {ref, :error, {{:http_status, file.error}, reason}}
-        else
-          File.close file.file
-          send parent, {ref, :done, file.meta}
-        end
-        :ok
-      {:hackney_response, _ref, bin} ->
-        if file.error do
-          wait_response parent, %{file | file: file.file <> bin}
-        else
-          :ok = IO.write file.file, bin
-          wait_response parent, file
-        end
-      _ ->
-        :ok
-    end
+    Dropbox.File.download!(client, path, rev)
   end
 
   def download_file(client, path, local_path, rev \\ nil, keep_mtime \\ true) do
-    parent = self
-    pid = spawn fn -> wait_response parent, %{file: local_path, meta: nil, error: nil} end
-
-    case Dropbox.HTTP.get client, "#{@base_content_url}/files/#{client.root}#{normalize_path path}#{if rev do "?rev=" <> rev end}", Dropbox.Metadata, pid do
-      {:ok, _ref} ->
-        receive do
-          {_ref, :done, meta} ->
-            if keep_mtime do
-              case File.stat local_path, [{:time, :universal}] do
-                {:ok, stat} ->
-                  stat = %{stat | mtime: Dropbox.Util.parse_date meta.client_mtime}
-                  File.write_stat local_path, stat, [{:time, :universal}]
-                _ ->
-              end
-            end
-            {:ok, meta}
-          {_ref, :error, reason} -> {:error, reason}
-        end
-      e -> e
-    end
+    Dropbox.File.download_file(client, path, local_path, rev, keep_mtime)
   end
 
   def download_file!(client, path, local_path, rev \\ nil, keep_mtime \\ true) do
-    case download_file client, path, local_path, rev, keep_mtime do
-      {:ok, meta} -> meta
-      {:error, reason} -> raise_error reason
-    end
+    Dropbox.File.entire_file!(client, path, local_path, rev, keep_mtime)
   end
 
   def upload_file(client, local_path, remote_path, overwrite \\ true, parent_rev \\ nil) do
