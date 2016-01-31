@@ -132,11 +132,9 @@ defmodule Dropbox do
     end
   end
 
-  def delta(client, cursor \\ nil, path_prefix \\ nil, media \\ false) do
-  end
+  def delta(client, cursor \\ nil, path_prefix \\ nil, media \\ false), do: nil
 
-  def wait_for_change(client, cursor, timeout \\ 30) do
-  end
+  def wait_for_change(client, cursor, timeout \\ 30), do: nil
 
   def revisions(client, path, limit \\ 10) do
     Dropbox.HTTP.get client, "#{@base_url}/revisions/#{client.root}#{normalize_path path}?rev_limit=#{limit}", Dropbox.Metadata
