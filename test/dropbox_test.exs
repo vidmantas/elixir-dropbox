@@ -1,7 +1,7 @@
 defmodule DropboxTest do
   use ExUnit.Case
   alias  Dropbox.Setup
-  import Dropbox.TestHelper, only: [access_key: 0, client: 0, write_file: 1]
+  import Dropbox.TestHelper, only: [access_key: 0, client: 0, write_file: 1, random_name: 0]
 
   setup_all do
     Dropbox.HTTP.start
@@ -56,7 +56,4 @@ defmodule DropboxTest do
     assert Dropbox.delete!(ctx[:client], filename) == true
   end
 
-  defp random_name do
-    "test-" <> :base64.encode(:crypto.rand_bytes(8)) |> String.replace(~r/[^a-zA-Z]/, "")
-  end
 end

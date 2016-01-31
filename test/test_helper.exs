@@ -18,6 +18,11 @@ defmodule Dropbox.TestHelper do
   def write_file(access_token) when is_binary(access_token) do
       File.write! ".dropbox-access-token" , "#{access_token}"
   end
+
+  def random_name do
+    "test-" <> :base64.encode(:crypto.rand_bytes(8)) |> String.replace(~r/[^a-zA-Z]/, "")
+  end
+
 end
 
 defmodule Dropbox.Setup do
