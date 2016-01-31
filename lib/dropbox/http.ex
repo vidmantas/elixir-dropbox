@@ -59,6 +59,45 @@ defmodule Dropbox.HTTP do
     end # case:hackney
   end
 
+  # Moved this mess into HTTP :)
+  def wait_response(parent, file) do
+    receive do
+      {:hackney_response, _ref, {:status, status, _reason}} ->
+        if status in 200..299 do
+          wait_response parent, file
+        else
+          wait_response parent, %{file | file: "", error: status}
+        end
+      {:hackney_response, _ref, {:headers, headers}} ->
+        if file.error do
+          wait_response parent, file
+        else
+          {_, meta} = Enum.find headers, fn({k,_}) -> k == "x-dropbox-metadata" end
+          meta = Dropbox.Util.atomize_map Dropbox.Metadata, Jazz.decode!(meta)
+          {:ok, newfile} = File.open file.file, [:write]
+          wait_response parent, %{file | file: newfile, meta: meta}
+        end
+      {:hackney_response, ref, :done} ->
+        if file.error do
+          reason = Jazz.decode!(file.file, keys: :atoms).error
+          send parent, {ref, :error, {{:http_status, file.error}, reason}}
+        else
+          File.close file.file
+          send parent, {ref, :done, file.meta}
+        end
+        :ok
+      {:hackney_response, _ref, bin} ->
+        if file.error do
+          wait_response parent, %{file | file: file.file <> bin}
+        else
+          :ok = IO.write file.file, bin
+          wait_response parent, file
+        end
+      _ ->
+        :ok
+    end
+  end
+
   defp opts, do: [{:pool, :default}]
   
   defp set_options(nil), do: opts
