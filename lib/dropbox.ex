@@ -2,6 +2,7 @@ defmodule Dropbox do
   @moduledoc """
   Provides an interface to the Dropbox Core API.
   """
+  import Dropbox.Error
 
   @base_url "https://api.dropbox.com/1"
   @base_content_url "https://api-content.dropbox.com/1"
@@ -13,53 +14,6 @@ defmodule Dropbox do
   def start(_type, _args) do
     start
     {:ok, self}
-  end
-
-  ### OAuth 2.0: optional, can be handled by third-party lib or manually ###
-  # -- MOVED
-  def authorize_url(client, redirect_uri \\ nil, state \\ "") do
-    query = %{
-      client_id: client.client_id,
-      response_type: "code",
-      state: state
-    }
-    if redirect_uri do
-      query = Map.put query, :redirect_uri, redirect_uri
-    end
-
-    "https://www.dropbox.com/1/oauth2/authorize?#{URI.encode_query query}"
-  end
-
-  # -- MOVED to Auth model.
-  def access_token(client, code) do
-    case Dropbox.HTTP.post client, oauth2_authcode(code), nil, %{access_token: nil, uid: nil} do
-      {:ok, token} -> {:ok, token.access_token, token.uid}
-      e -> e
-    end
-  end
-
-  defp oauth2_authcode(code) do
-    "#{@base_url}/oauth2/token?grant_type=authorization_code&code=#{URI.encode(code)}"
-  end
-
-  def disable_access_token(client) do
-    case Dropbox.HTTP.post client, "#{@base_url}/disable_access_token" do
-      {:ok, _} -> :ok
-      e -> e
-    end
-  end
-
-  ### Dropbox accounts ###
-
-  def account_info(client) do
-    Dropbox.HTTP.get client, "#{@base_url}/account/info", Dropbox.Account
-  end
-
-  def account_info!(client) do
-    case account_info client do
-      {:ok, info} -> info
-      {:error, reason} -> raise_error reason
-    end
   end
 
   ### Files and metadata ###
@@ -355,14 +309,6 @@ defmodule Dropbox do
     end
   end
 
-  defp raise_error(reason) do
-    case reason do
-      {{:http_status, code}, reason} ->
-        raise %Dropbox.Error{message: reason, status: code}
-      reason ->
-        raise %Dropbox.Error{message: reason}
-    end
-  end
 
   defp normalize_path(path) do
     if String.starts_with? path, "/" do
