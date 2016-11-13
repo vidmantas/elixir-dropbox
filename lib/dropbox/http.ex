@@ -74,7 +74,7 @@ defmodule Dropbox.HTTP do
         else
           {_, meta} = Enum.find headers, fn({k,_}) -> k == "x-dropbox-metadata" end
           meta = Dropbox.Util.atomize_map Dropbox.Metadata, Jazz.decode!(meta)
-          {:ok, newfile} = File.open file.file, [:write]
+          {:ok, newfile} = File.open file.file, [:write, :utf8]
           wait_response parent, %{file | file: newfile, meta: meta}
         end
       {:hackney_response, ref, :done} ->
